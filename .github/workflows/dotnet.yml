@@ -18,7 +18,7 @@ jobs:
     - name: Write Strong Name Key
       env:
         KEY: ${{ secrets.STRONG_NAME_KEY }}
-      run: echo $KEY | base64 --decode > Topgg.ProxyCheck/topgg.proxycheck.snk
+      run: echo "$KEY" | base64 --decode > Topgg.ProxyCheck/topgg.proxycheck.snk
     - name: Build
       run: dotnet build --configuration Release --no-restore
     - name: Test
@@ -29,6 +29,8 @@ jobs:
     - name: Push to GitHub Packages
       run: dotnet nuget push ./artifacts/*.nupkg -k ${{ secrets.GITHUB_TOKEN }} -s https://nuget.pkg.github.com/top-gg/index.json --skip-duplicate
       if: github.ref == 'refs/heads/master'
+    - name: Push to Nuget
+      run: dotnet nuget push ./artifacts/*.nupkg --skip-duplicate
 
 env:
   DOTNET_NOLOGO: true
