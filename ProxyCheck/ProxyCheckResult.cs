@@ -28,6 +28,8 @@
 using System;
 using System.Collections.Generic;
 using System.Net;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using JetBrains.Annotations;
 
 namespace ProxyCheckUtil
@@ -35,24 +37,51 @@ namespace ProxyCheckUtil
     [PublicAPI]
     public class ProxyCheckResult
     {
+        private IpResultDictionary _resultsDictionary;
+
+        public ProxyCheckResult()
+        {
+            Results = new Dictionary<IPAddress, IpResult>();
+            _resultsDictionary = new IpResultDictionary(Results);
+        }
+
         /// <summary>
         /// API status result
         /// </summary>
+        [JsonPropertyName("status")]
         public StatusResult Status { get; set; }
 
         /// <summary>
         /// Answering node
         /// </summary>
-        public string Node { get; set; }
+        [JsonPropertyName("node")]
+        public string? Node { get; set; }
 
         /// <summary>
         /// Dictionary of results for the IP address(es) provided
         /// </summary>
-        public Dictionary<IPAddress, IpResult> Results { get; internal set; } = new Dictionary<IPAddress, IpResult>();
+        [JsonIgnore]
+        public Dictionary<IPAddress, IpResult> Results { get; internal set; }
+
+        [JsonExtensionData]
+        public IDictionary<string, JsonElement> ExtensionData
+        {
+            get => _resultsDictionary;
+            set
+            {
+                _resultsDictionary.Clear();
+
+                foreach (var kv in value)
+                {
+                    _resultsDictionary.Add(kv);
+                }
+            }
+        }
 
         /// <summary>
         /// The amount of time the query took on the server
         /// </summary>
+        [JsonPropertyName("query time")]
         public TimeSpan? QueryTime { get; set; }
 
         [PublicAPI]
@@ -61,17 +90,20 @@ namespace ProxyCheckUtil
             /// <summary>
             /// The ASN the IP address belongs to
             /// </summary>
-            public string ASN { get; set; }
+            [JsonPropertyName("asn")]
+            public string? ASN { get; set; }
 
             /// <summary>
             /// The provider the IP address belongs to
             /// </summary>
-            public string Provider { get; set; }
+            [JsonPropertyName("provider")]
+            public string? Provider { get; set; }
 
             /// <summary>
             /// The country the IP address is in.
             /// </summary>
-            public string Country { get; set; }
+            [JsonPropertyName("country")]
+            public string? Country { get; set; }
 
             /// <summary>
             /// The latitude of the IP address
@@ -79,56 +111,69 @@ namespace ProxyCheckUtil
             /// <remarks>
             /// This is not the exact location of the IP address
             /// </remarks>
+            [JsonPropertyName("latitude")]
             public double? Latitude { get; set; }
+
             /// <summary>
             /// The longitude of the IP address
             /// </summary>
             /// <remarks>
             /// This is not the exact location of the IP address
             /// </remarks>
+            [JsonPropertyName("longitude")]
             public double? Longitude { get; set; }
+
             /// <summary>
             /// The city the of the IP address
             /// </summary>
             /// <remarks>
             /// This may not be the exact city
             /// </remarks>
-            public string City { get; set; }
+            [JsonPropertyName("city")]
+            public string? City { get; set; }
 
             /// <summary>
             /// ISO Country code of the IP address country
             /// </summary>
-            public string ISOCode { get; set; }
+            [JsonPropertyName("isocode")]
+            public string? ISOCode { get; set; }
 
             /// <summary>
             /// True if the IP is detected as proxy
             /// False otherwise
             /// </summary>
+            [JsonPropertyName("proxy")]
+            [JsonConverter(typeof(YesNoJsonConverter))]
             public bool IsProxy { get; set; }
 
             /// <summary>
             /// The type of proxy detected
             /// </summary>
-            public string ProxyType { get; set; }
+            [JsonPropertyName("type")]
+            public string ProxyType { get; set; } = "";
 
             /// <summary>
             /// The port the proxy server is operating on
             /// </summary>
+            [JsonPropertyName("port")]
             public int? Port { get; set; }
 
             /// <summary>
             /// Not null when risk is > 0, the risk score of the IP address
             /// </summary>
+            [JsonPropertyName("risk")]
             public int? RiskScore { get; set; }
             
             /// <summary>
             /// The last time the proxy server was seen in human readable format.
             /// </summary>
-            public string LastSeenHuman { get; set; }
+            [JsonPropertyName("last seen human")]
+            public string? LastSeenHuman { get; set; }
 
             /// <summary>
             /// The last time the proxy server was seen in Unix time stamp
             /// </summary>
+            [JsonPropertyName("last seen unix")]
             public long? LastSeenUnix { get; set; }
 
             /// <summary>
@@ -149,7 +194,7 @@ namespace ProxyCheckUtil
             /// <summary>
             /// If not `null` the description of the error that occured
             /// </summary>
-            public string ErrorMessage { get; set; }
+            public string? ErrorMessage { get; set; }
 
             /// <summary>
             /// True if this item was retrieved from cache

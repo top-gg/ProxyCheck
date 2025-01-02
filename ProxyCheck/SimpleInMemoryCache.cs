@@ -12,10 +12,10 @@ namespace ProxyCheckUtil
 
         private class CacheItem
         {
-            public IPAddress IPAddress { get; set; }
-            public ProxyCheckRequestOptions Options { get; set; }
+            public IPAddress IPAddress { get; set; } = null!;
+            public ProxyCheckRequestOptions Options { get; set; } = null!;
 
-            public ProxyCheckResult.IpResult Result { get; set; }
+            public ProxyCheckResult.IpResult Result { get; set; } = null!;
 
             public DateTimeOffset Time { get; set; }
 
@@ -31,7 +31,7 @@ namespace ProxyCheckUtil
             _maxCacheAge = maxCacheAge;
         }
 
-        public ProxyCheckResult.IpResult GetCacheRecord(IPAddress ip, ProxyCheckRequestOptions options)
+        public ProxyCheckResult.IpResult? GetCacheRecord(IPAddress ip, ProxyCheckRequestOptions options)
         {
             var results = GetCacheRecords(new[] {ip}, options);
 

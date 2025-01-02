@@ -48,7 +48,7 @@ namespace ProxyCheckUtil
         /// </summary>
         public RiskLevel? RiskLevel { get; set; }
 
-        public override bool Equals(object obj)
+        public override bool Equals(object? obj)
         {
             if (!(obj is ProxyCheckRequestOptions o))
                 return false;
@@ -72,6 +72,19 @@ namespace ProxyCheckUtil
                 return false;
 
             return IncludeLastSeen == o.IncludeLastSeen;
+        }
+
+        public override int GetHashCode()
+        {
+            var hash = 17;
+            hash = hash * 23 + IncludeVPN.GetHashCode();
+            hash = hash * 23 + UseTLS.GetHashCode();
+            hash = hash * 23 + IncludeASN.GetHashCode();
+            hash = hash * 23 + UseInference.GetHashCode();
+            hash = hash * 23 + IncludePort.GetHashCode();
+            hash = hash * 23 + IncludeLastSeen.GetHashCode();
+            hash = hash * 23 + RiskLevel.GetHashCode();
+            return hash;
         }
     }
 }

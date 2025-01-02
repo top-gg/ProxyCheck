@@ -5,7 +5,7 @@ namespace ProxyCheckUtil
 {
     public interface IProxyCheckCacheProvider
     {
-        ProxyCheckResult.IpResult GetCacheRecord(IPAddress ip, ProxyCheckRequestOptions options);
+        ProxyCheckResult.IpResult? GetCacheRecord(IPAddress ip, ProxyCheckRequestOptions options);
 
         IDictionary<IPAddress, ProxyCheckResult.IpResult> GetCacheRecords(IPAddress[] ipAddress, ProxyCheckRequestOptions options);
 

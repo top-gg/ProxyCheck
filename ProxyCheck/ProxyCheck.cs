@@ -32,10 +32,9 @@ using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Text;
+using System.Text.Json;
 using System.Threading.Tasks;
 using JetBrains.Annotations;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 
 namespace ProxyCheckUtil
 {
@@ -45,27 +44,47 @@ namespace ProxyCheckUtil
         /// <summary>
         /// Creates the ProxyCheck object with optional API key and cache provider
         /// </summary>
+        /// <remarks>
+        /// This constructor is obsolete and will be removed in the future.
+        /// Without the HttpClientFactory, the library will use a single HttpClient instance for all requests.
+        /// This is not recommended for production use, since it doesn't respect DNS changes.
+        /// </remarks>
         /// <param name="apiKey">API key to use</param>
         /// <param name="cacheProvider">Cache provider to use</param>
-        public ProxyCheck(string apiKey = "", IProxyCheckCacheProvider cacheProvider = null)
+        [Obsolete("Use the constructor with IHttpClientFactory")]
+        public ProxyCheck(string apiKey = "", IProxyCheckCacheProvider? cacheProvider = null)
+            : this(new DefaultHttpClientFactory(), apiKey, cacheProvider)
+        {
+        }
+
+        /// <summary>
+        /// Creates the ProxyCheck object with optional API key and cache provider
+        /// </summary>
+        /// <param name="clientFactory">HttpClient factory to use</param>
+        /// <param name="apiKey">API key to use</param>
+        /// <param name="cacheProvider">Cache provider to use</param>
+        public ProxyCheck(IHttpClientFactory clientFactory, string? apiKey = "", IProxyCheckCacheProvider? cacheProvider = null)
         {
             if (apiKey == null)
                 apiKey = string.Empty;
 
             ApiKey = apiKey;
             CacheProvider = cacheProvider;
+            _clientFactory = clientFactory;
         }
 
+        [Obsolete("Use the constructor with IHttpClientFactory")]
         public ProxyCheck(IProxyCheckCacheProvider cacheProvider)
+            : this("", cacheProvider)
         {
-            CacheProvider = cacheProvider;
         }
 
         private const string ProxyCheckUrl = "proxycheck.io/v2";
+
+        private ProxyCheckRequestOptions _options = new();
+        private readonly IHttpClientFactory _clientFactory;
         
-        private ProxyCheckRequestOptions _options = new ProxyCheckRequestOptions();
-        
-        public IProxyCheckCacheProvider CacheProvider { get; set; }
+        public IProxyCheckCacheProvider? CacheProvider { get; set; }
 
         /// <summary>
         /// The API key to use with the query
@@ -181,7 +200,7 @@ namespace ProxyCheckUtil
             if (ipAddress == null)
                 throw new ArgumentNullException(nameof(ipAddress));
 
-            if (!IPAddress.TryParse(ipAddress, out IPAddress ip))
+            if (!IPAddress.TryParse(ipAddress, out var ip))
                 throw new ArgumentException("Must be a valid IP", nameof(ipAddress));
 
             return await QueryAsync(ip, tag);
@@ -217,7 +236,7 @@ namespace ProxyCheckUtil
             List<IPAddress> ips = new List<IPAddress>(ipAddresses.Length);
             foreach (var ipString in ipAddresses)
             {
-                if (!IPAddress.TryParse(ipString, out IPAddress ip))
+                if (!IPAddress.TryParse(ipString, out var ip))
                     throw new ArgumentException($"Invalid IP address provided. `{ipString}` is not a valid IP");
 
                 ips.Add(ip);
@@ -241,7 +260,7 @@ namespace ProxyCheckUtil
             if (!ipAddresses.Any())
                 throw new ArgumentException("Must contain at least 1 IP Address", nameof(ipAddresses));
 
-            IDictionary<IPAddress, ProxyCheckResult.IpResult> ipResults = null;
+            IDictionary<IPAddress, ProxyCheckResult.IpResult>? ipResults = null;
             if (CacheProvider != null)
             {
                 sw.Start();
@@ -294,7 +313,7 @@ namespace ProxyCheckUtil
                 .Append($"&days={Convert.ToInt32(DayLimit)}")
                 .Append($"&risk={Convert.ToInt32(RiskLevel)}");
 
-            using (var client = new HttpClient())
+            using (var client = _clientFactory.CreateClient())
             {
                 Dictionary<string, string> postData = new Dictionary<string, string>();
 
@@ -309,10 +328,15 @@ namespace ProxyCheckUtil
                 try
                 {
                     var response = await client.PostAsync(url.ToString(), content);
+                    ProxyCheckResult? result;
 
-                    string json = await response.Content.ReadAsStringAsync();
+                    using (var stream = await response.Content.ReadAsStreamAsync())
+                    {
+                        result = await JsonSerializer.DeserializeAsync(stream, ProxyJsonContext.Default.ProxyCheckResult);
+                    }
 
-                    ProxyCheckResult result = ParseJson(json);
+                    if (result == null)
+                        throw new ProxyCheckException("No result from server");
 
                     // We want to update the cache now
                     CacheProvider?.SetCacheRecord(result.Results, _options);
@@ -335,7 +359,7 @@ namespace ProxyCheckUtil
                 {
                     throw new ProxyCheckException("URL should not be NULL", e);
                 }
-                catch (JsonReaderException e)
+                catch (JsonException e)
                 {
                     throw new ProxyCheckException("Bad JSON from server", e);
                 }
@@ -344,123 +368,6 @@ namespace ProxyCheckUtil
                     throw new ProxyCheckException("Unknown state please check the inner exception.", e);
                 }
             }
-
-        }
-
-        /// <summary>
-        /// Parses the servers JSON response
-        /// </summary>
-        /// <param name="json">JSON to Parse</param>
-        /// <returns>The parsed JSON</returns>
-        private ProxyCheckResult ParseJson(string json)
-        {
-            ProxyCheckResult res = new ProxyCheckResult();
-
-            JObject obj = JObject.Parse(json);
-
-            foreach (var token in obj)
-            {
-                switch (token.Key)
-                {
-                    case "status":
-                        if (Enum.TryParse((string) token.Value, true, out StatusResult statusResult))
-                        {
-                            res.Status = statusResult;
-                        }
-
-                        break;
-
-                    case "node":
-                        res.Node = (string) token.Value;
-                        break;
-
-                    case "query time":
-                        double secs = Convert.ToDouble(((string) token.Value).Substring(0, ((string) token.Value).Length - 1));
-                        TimeSpan ts = TimeSpan.FromSeconds(secs);
-                        res.QueryTime = ts;
-                        break;
-
-                    default:
-                        if (IPAddress.TryParse(token.Key, out IPAddress ip))
-                        {
-                            ProxyCheckResult.IpResult ipResult = new ProxyCheckResult.IpResult();
-
-                            foreach (var innerToken in (JObject) token.Value)
-                            {
-                                switch (innerToken.Key)
-                                {
-                                    case "asn":
-                                        ipResult.ASN = (string) innerToken.Value;
-                                        break;
-
-                                    case "provider":
-                                        ipResult.Provider = (string) innerToken.Value;
-                                        break;
-
-                                    case "country":
-                                        ipResult.Country = (string) innerToken.Value;
-                                        break;
-
-                                    case "latitude":
-                                        ipResult.Latitude = Convert.ToDouble((string) innerToken.Value);
-                                        break;
-
-                                    case "longitude":
-                                        ipResult.Longitude = Convert.ToDouble((string) innerToken.Value);
-                                        break;
-
-                                    case "isocode":
-                                        ipResult.ISOCode = (string) innerToken.Value;
-                                        break;
-
-                                    case "city":
-                                        ipResult.City = (string) innerToken.Value;
-                                        break;
-
-                                    case "proxy":
-                                        string isProxy = (string) innerToken.Value;
-                                        ipResult.IsProxy = isProxy.Equals("yes", StringComparison.OrdinalIgnoreCase);
-                                        break;
-                                    
-                                    case "risk":
-                                        ipResult.RiskScore = Convert.ToInt32((string)innerToken.Value);
-                                        break;
-                                    
-                                    case "type":
-                                        ipResult.ProxyType = (string)innerToken.Value;
-                                        break;
-
-                                    case "port":
-                                        ipResult.Port = Convert.ToInt32((string) innerToken.Value);
-                                        break;
-
-                                    case "last seen human":
-                                        ipResult.LastSeenHuman = (string) innerToken.Value;
-                                        break;
-
-                                    case "last seen unix":
-                                        ipResult.LastSeenUnix = Convert.ToInt64((string) innerToken.Value);
-                                        break;
-
-                                    case "error":
-                                        ipResult.ErrorMessage = (string) innerToken.Value;
-                                        break;
-
-                                    default:
-                                        Debug.WriteLine(
-                                            $"Unknown item present Key: {innerToken.Key}, Value:{innerToken.Value}");
-                                        break;
-                                }
-                            }
-
-                            res.Results.Add(ip, ipResult);
-                        }
-
-                        break;
-                }
-            }
-
-            return res;
         }
     }
 }
