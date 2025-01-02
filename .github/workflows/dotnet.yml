@@ -16,7 +16,9 @@ jobs:
     - name: Restore dependencies
       run: dotnet restore
     - name: Write Strong Name Key
-      run: echo ${{ secrets.STRONG_NAME_KEY }} >> Topgg.ProxyCheck/topgg.proxycheck.snk
+      env:
+        KEY: ${{ secrets.STRONG_NAME_KEY }}
+      run: echo $KEY | base64 --decode > Topgg.ProxyCheck/topgg.proxycheck.snk
     - name: Build
       run: dotnet build --configuration Release --no-restore
     - name: Test
