@@ -1,8 +1,6 @@
-﻿using System;
-using System.Net.Http;
-using JetBrains.Annotations;
+﻿using System.Net.Http;
 
-namespace ProxyCheckUtil
+namespace Topgg.ProxyCheck
 {
     /// <summary>
     /// Simple implementation of <see cref="IHttpClientFactory"/> that creates a single <see cref="System.Net.Http.HttpClient"/> instance.

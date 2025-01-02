@@ -1,4 +1,4 @@
-namespace ProxyCheckUtil
+namespace Topgg.ProxyCheck
 {
     public enum RiskLevel
     {

@@ -36,7 +36,7 @@ using System.Text.Json;
 using System.Threading.Tasks;
 using JetBrains.Annotations;
 
-namespace ProxyCheckUtil
+namespace Topgg.ProxyCheck
 {
     [PublicAPI]
     public class ProxyCheck
@@ -63,7 +63,8 @@ namespace ProxyCheckUtil
         /// <param name="clientFactory">HttpClient factory to use</param>
         /// <param name="apiKey">API key to use</param>
         /// <param name="cacheProvider">Cache provider to use</param>
-        public ProxyCheck(IHttpClientFactory clientFactory, string? apiKey = "", IProxyCheckCacheProvider? cacheProvider = null)
+        public ProxyCheck(IHttpClientFactory clientFactory, string? apiKey = "",
+            IProxyCheckCacheProvider? cacheProvider = null)
         {
             if (apiKey == null)
                 apiKey = string.Empty;
@@ -83,7 +84,7 @@ namespace ProxyCheckUtil
 
         private ProxyCheckRequestOptions _options = new();
         private readonly IHttpClientFactory _clientFactory;
-        
+
         public IProxyCheckCacheProvider? CacheProvider { get; set; }
 
         /// <summary>
@@ -215,7 +216,7 @@ namespace ProxyCheckUtil
         /// <returns>Object describing the result.</returns>
         public async Task<ProxyCheckResult> QueryAsync(IPAddress ipAddress, string tag = "")
         {
-            return await QueryAsync(new[] {ipAddress}, tag);
+            return await QueryAsync(new[] { ipAddress }, tag);
         }
 
         /// <summary>
@@ -237,7 +238,8 @@ namespace ProxyCheckUtil
             foreach (var ipString in ipAddresses)
             {
                 if (!IPAddress.TryParse(ipString, out var ip))
-                    throw new ArgumentException($"Invalid IP address provided. `{ipString}` is not a valid IP");
+                    throw new ArgumentException(
+                        $"Invalid IP address provided. `{ipString}` is not a valid IP");
 
                 ips.Add(ip);
             }
@@ -256,9 +258,10 @@ namespace ProxyCheckUtil
         {
             // We use this for if the cache is used and query is 100% cache hits
             Stopwatch sw = new Stopwatch();
-            
+
             if (!ipAddresses.Any())
-                throw new ArgumentException("Must contain at least 1 IP Address", nameof(ipAddresses));
+                throw new ArgumentException("Must contain at least 1 IP Address",
+                    nameof(ipAddresses));
 
             IDictionary<IPAddress, ProxyCheckResult.IpResult>? ipResults = null;
             if (CacheProvider != null)
@@ -278,7 +281,7 @@ namespace ProxyCheckUtil
                 ipAddresses = ipList.ToArray();
 
                 // Not 100% cache hits dont need stop watch anymore
-                if(ipAddresses.Any())
+                if (ipAddresses.Any())
                     sw.Stop();
             }
 
@@ -313,62 +316,64 @@ namespace ProxyCheckUtil
                 .Append($"&days={Convert.ToInt32(DayLimit)}")
                 .Append($"&risk={Convert.ToInt32(RiskLevel)}");
 
-            using (var client = _clientFactory.CreateClient())
+            using var client = _clientFactory.CreateClient();
+
+            Dictionary<string, string> postData = new Dictionary<string, string>();
+
+            var ipListString = string.Join(",", ipAddresses.Select(c => c.ToString()));
+            postData.Add("ips", ipListString);
+
+            if (!string.IsNullOrWhiteSpace(tag))
+                postData.Add("tag", tag);
+
+            FormUrlEncodedContent content = new FormUrlEncodedContent(postData);
+
+            try
             {
-                Dictionary<string, string> postData = new Dictionary<string, string>();
+                var response = await client.PostAsync(url.ToString(), content);
+                ProxyCheckResult? result;
 
-                string ipList = string.Join(",", ipAddresses.Select(c => c.ToString()));
-                postData.Add("ips", ipList);
-
-                if (!string.IsNullOrWhiteSpace(tag))
-                    postData.Add("tag", tag);
-
-                FormUrlEncodedContent content = new FormUrlEncodedContent(postData);
-
-                try
+                using (var stream = await response.Content.ReadAsStreamAsync())
                 {
-                    var response = await client.PostAsync(url.ToString(), content);
-                    ProxyCheckResult? result;
+                    result = await JsonSerializer.DeserializeAsync(stream,
+                        ProxyJsonContext.Default.ProxyCheckResult);
+                }
 
-                    using (var stream = await response.Content.ReadAsStreamAsync())
-                    {
-                        result = await JsonSerializer.DeserializeAsync(stream, ProxyJsonContext.Default.ProxyCheckResult);
-                    }
+                if (result == null)
+                    throw new ProxyCheckException("No result from server");
 
-                    if (result == null)
-                        throw new ProxyCheckException("No result from server");
+                // We want to update the cache now
+                CacheProvider?.SetCacheRecord(result.Results, _options);
 
-                    // We want to update the cache now
-                    CacheProvider?.SetCacheRecord(result.Results, _options);
-
-                    if (ipResults == null || !ipResults.Any()) // Return current results as none were cache hits
-                        return result;
-
-                    foreach (var item in ipResults)
-                    {
-                        if(result.Results.ContainsKey(item.Key))
-                            continue; // We don't want to include a cache hit from an IP that was somehow gotten from API too.
-
-                        result.Results.Add(item.Key, item.Value);
-                    }
-
+                if (ipResults == null ||
+                    !ipResults.Any()) // Return current results as none were cache hits
                     return result;
 
-                }
-                catch (ArgumentNullException e)
+                foreach (var item in ipResults)
                 {
-                    throw new ProxyCheckException("URL should not be NULL", e);
+                    if (result.Results.ContainsKey(item.Key))
+                        continue; // We don't want to include a cache hit from an IP that was somehow gotten from API too.
+
+                    result.Results.Add(item.Key, item.Value);
                 }
-                catch (JsonException e)
-                {
-                    throw new ProxyCheckException("Bad JSON from server", e);
-                }
-                catch (Exception e)
-                {
-                    throw new ProxyCheckException("Unknown state please check the inner exception.", e);
-                }
+
+                return result;
+
+            }
+            catch (ArgumentNullException e)
+            {
+                throw new ProxyCheckException("URL should not be NULL", e);
+            }
+            catch (JsonException e)
+            {
+                throw new ProxyCheckException("Bad JSON from server", e);
+            }
+            catch (Exception e)
+            {
+                throw new ProxyCheckException("Unknown state please check the inner exception.", e);
             }
         }
+
     }
 }
 

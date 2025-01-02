@@ -1,6 +1,6 @@
 ﻿using JetBrains.Annotations;
 
-namespace ProxyCheckUtil
+namespace Topgg.ProxyCheck
 {
     [PublicAPI]
     public class ProxyCheckRequestOptions

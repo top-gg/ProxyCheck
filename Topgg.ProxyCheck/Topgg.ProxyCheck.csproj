@@ -13,25 +13,26 @@
     <StartupObject />
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
-    <Authors>Michael Combs</Authors>
-    <Company />
-    <Description>Checks if an IP address is a public proxy or not using ProxyCheck.IO</Description>
+    <Company>Top.gg B.V.</Company>
+    <Description>Wraps around proxycheck.io, forked from hollow87 to continue maintenance.</Description>
     <Copyright>Public Domain</Copyright>
     <PackageLicense>https://github.com/hollow87/ProxyCheck/blob/master/LICENSE</PackageLicense>
-    <PackageProjectUrl>https://github.com/hollow87/ProxyCheck</PackageProjectUrl>
-    <RepositoryUrl>https://github.com/hollow87/ProxyCheck</RepositoryUrl>
+    <PackageProjectUrl>https://github.com/top-gg/ProxyCheck</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/top-gg/ProxyCheck</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PackageTags>proxy,proxycheck</PackageTags>
     <NeutralLanguage />
     <SignAssembly>true</SignAssembly>
     <DelaySign>false</DelaySign>
-    <AssemblyOriginatorKeyFile>proxycheck.snk</AssemblyOriginatorKeyFile>
-    <Version>2.0.1.1</Version>
-    <PackageId>ProxyCheck</PackageId>
-    <Product>ProxyCheck</Product>
-    <PackageReleaseNotes>Updated nuget package to include the XML documentation.</PackageReleaseNotes>
-    <AssemblyVersion>2.0.1.0</AssemblyVersion>
-    <FileVersion>2.0.1.0</FileVersion>
+    <AssemblyOriginatorKeyFile>topgg.proxycheck.snk</AssemblyOriginatorKeyFile>
+    <Version>1.0.0</Version>
+    <PackageId>Topgg.ProxyCheck</PackageId>
+    <Product>Topgg.ProxyCheck</Product>
+    <AssemblyVersion>1.0.0.0</AssemblyVersion>
+    <FileVersion>1.0.0.0</FileVersion>
+    <AssemblyName>Topgg.ProxyCheck</AssemblyName>
+    <RootNamespace>Topgg.ProxyCheck</RootNamespace>
+    <Authors>Top.gg B.V.</Authors>
   </PropertyGroup>
   
   <PropertyGroup Condition="$(TargetFramework) == 'net8.0'">

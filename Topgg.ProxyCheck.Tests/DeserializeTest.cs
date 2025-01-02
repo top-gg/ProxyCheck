@@ -1,5 +1,6 @@
 ﻿using System.Net;
 using NSubstitute;
+using Topgg.ProxyCheck;
 
 namespace ProxyCheckUtil.Tests;
 

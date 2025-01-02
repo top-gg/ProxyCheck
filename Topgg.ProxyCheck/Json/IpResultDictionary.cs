@@ -4,10 +4,11 @@ using System.Linq;
 using System.Net;
 using System.Text.Json;
 
-namespace ProxyCheckUtil
+namespace Topgg.ProxyCheck
 {
     /// <summary>
-    /// Dictionary that deserializes IP addresses keys as <see cref="IPAddress"/> and values as <see cref="ProxyCheckResult.IpResult"/>.
+    /// Dictionary that deserializes IP addresses keys as <see cref="IPAddress"/> and values as
+    /// <see cref="ProxyCheckResult.IpResult"/>.
     /// </summary>
     internal class IpResultDictionary : IDictionary<string, JsonElement>
     {
@@ -23,7 +24,10 @@ namespace ProxyCheckUtil
         {
             foreach (var kvp in _results)
             {
-                yield return new KeyValuePair<string, JsonElement>(kvp.Key.ToString(), JsonSerializer.SerializeToDocument(kvp.Value, ProxyJsonContext.Default.IpResult).RootElement);
+                yield return new KeyValuePair<string, JsonElement>(
+                    kvp.Key.ToString(), 
+                    JsonSerializer.SerializeToDocument(
+                        kvp.Value, ProxyJsonContext.Default.IpResult).RootElement);
             }
 
             foreach (var kvp in _extensionData)
@@ -52,7 +56,10 @@ namespace ProxyCheckUtil
         {
             foreach (var kvp in _results)
             {
-                array[arrayIndex++] = new KeyValuePair<string, JsonElement>(kvp.Key.ToString(), JsonSerializer.SerializeToDocument(kvp.Value, ProxyJsonContext.Default.IpResult).RootElement);
+                array[arrayIndex++] = new KeyValuePair<string, JsonElement>(
+                    kvp.Key.ToString(), 
+                    JsonSerializer.SerializeToDocument(
+                        kvp.Value, ProxyJsonContext.Default.IpResult).RootElement);
             }
 
             foreach (var kvp in _extensionData)
@@ -100,7 +107,8 @@ namespace ProxyCheckUtil
         {
             if (_results.TryGetValue(IPAddress.Parse(key), out var result))
             {
-                value = JsonSerializer.SerializeToDocument(result, ProxyJsonContext.Default.IpResult).RootElement;
+                value = JsonSerializer.SerializeToDocument(
+                    result, ProxyJsonContext.Default.IpResult).RootElement;
                 return true;
             }
 
@@ -111,7 +119,8 @@ namespace ProxyCheckUtil
         public JsonElement this[string key]
         {
             get => IPAddress.TryParse(key, out var ip)
-                ? JsonSerializer.SerializeToDocument(_results[ip], ProxyJsonContext.Default.IpResult).RootElement
+                ? JsonSerializer.SerializeToDocument(
+                    _results[ip], ProxyJsonContext.Default.IpResult).RootElement
                 : _extensionData[key];
 
             set
@@ -133,7 +142,8 @@ namespace ProxyCheckUtil
             .ToList();
 
         ICollection<JsonElement>  IDictionary<string, JsonElement>.Values => _results.Values
-            .Select(result => JsonSerializer.SerializeToDocument(result, ProxyJsonContext.Default.IpResult).RootElement)
+            .Select(result => JsonSerializer.SerializeToDocument(
+                result, ProxyJsonContext.Default.IpResult).RootElement)
             .Concat(_extensionData.Values)
             .ToList();
 

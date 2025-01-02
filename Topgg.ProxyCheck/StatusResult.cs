@@ -25,20 +25,16 @@
  * For more information, please refer to <https://unlicense.org>
 */
 
-using System;
 using JetBrains.Annotations;
 
-namespace ProxyCheckUtil
+namespace Topgg.ProxyCheck
 {
     [PublicAPI]
-    public class ProxyCheckException : Exception
+    public enum StatusResult
     {
-        public ProxyCheckException(string message) : base(message)
-        {
-        }
-
-        public ProxyCheckException(string message, Exception innerException) : base(message, innerException)
-        {
-        }
+        OK,
+        Warning,
+        Denied,
+        Error,
     }
 }

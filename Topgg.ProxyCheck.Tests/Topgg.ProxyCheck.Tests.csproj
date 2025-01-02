@@ -20,7 +20,7 @@
     </ItemGroup>
 
     <ItemGroup>
-      <ProjectReference Include="..\ProxyCheck\ProxyCheckUtil.csproj" />
+      <ProjectReference Include="..\Topgg.ProxyCheck\Topgg.ProxyCheck.csproj" />
     </ItemGroup>
 
 </Project>

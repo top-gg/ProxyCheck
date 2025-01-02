@@ -1,7 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.Net;
 
-namespace ProxyCheckUtil
+namespace Topgg.ProxyCheck
 {
     public interface IProxyCheckCacheProvider
     {
