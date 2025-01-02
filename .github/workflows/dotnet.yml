@@ -15,6 +15,8 @@ jobs:
         dotnet-version: '8.0.x' # Change this to the .NET version you are using
     - name: Restore dependencies
       run: dotnet restore
+    - name: Write Strong Name Key
+      run: echo ${{ secrets.STRONG_NAME_KEY }} >> Topgg.ProxyCheck/topgg.proxycheck.snk
     - name: Build
       run: dotnet build --configuration Release --no-restore
     - name: Test
