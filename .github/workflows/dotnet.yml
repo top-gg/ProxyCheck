@@ -30,7 +30,7 @@ jobs:
       run: dotnet nuget push ./artifacts/*.nupkg -k ${{ secrets.GITHUB_TOKEN }} -s https://nuget.pkg.github.com/top-gg/index.json --skip-duplicate
       if: github.ref == 'refs/heads/master'
     - name: Push to Nuget
-      run: dotnet nuget push ./artifacts/*.nupkg --skip-duplicate
+      run: dotnet nuget push ./artifacts/*.nupkg -k ${{ secrets.NUGET_TOKEN }} -s https://api.nuget.org/v3/index.json --skip-duplicate
 
 env:
   DOTNET_NOLOGO: true
