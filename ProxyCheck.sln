@@ -5,6 +5,8 @@ VisualStudioVersion = 15.0.26403.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ProxyCheckUtil", "ProxyCheck\ProxyCheckUtil.csproj", "{234ED760-6E95-4C53-B4EE-D4612A9E5BAD}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ProxyCheckUtil.Tests", "ProxyCheckUtil.Tests\ProxyCheckUtil.Tests.csproj", "{D768DB67-D857-4CA3-A8BA-88CA0F5E2306}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -15,6 +17,10 @@ Global
 		{234ED760-6E95-4C53-B4EE-D4612A9E5BAD}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{234ED760-6E95-4C53-B4EE-D4612A9E5BAD}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{234ED760-6E95-4C53-B4EE-D4612A9E5BAD}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D768DB67-D857-4CA3-A8BA-88CA0F5E2306}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D768DB67-D857-4CA3-A8BA-88CA0F5E2306}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D768DB67-D857-4CA3-A8BA-88CA0F5E2306}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D768DB67-D857-4CA3-A8BA-88CA0F5E2306}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
