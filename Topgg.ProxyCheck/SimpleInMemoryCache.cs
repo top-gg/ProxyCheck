@@ -35,8 +35,8 @@ namespace Topgg.ProxyCheck
         {
             var results = GetCacheRecords(new[] {ip}, options);
 
-            if (results != null && results.ContainsKey(ip))
-                return results[ip];
+            if (results != null && results.TryGetValue(ip, out var record))
+                return record;
 
             return null;
         }
@@ -53,7 +53,10 @@ namespace Topgg.ProxyCheck
 
             foreach (var item in cacheHits)
             {
-                results.Add(item.IPAddress, item.Result);
+                if (!results.ContainsKey(item.IPAddress))
+                {
+                    results.Add(item.IPAddress, item.Result);
+                }
             }
 
             return results;
