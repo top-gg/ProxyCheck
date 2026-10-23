@@ -304,9 +304,9 @@ namespace Topgg.ProxyCheck
             }
 
             var url = new StringBuilder()
-                .Append($"{(UseTLS ? "https://" : "http://")}{ProxyCheckUrl}/")
-                .Append(!string.IsNullOrWhiteSpace(ApiKey) ? $"&key={ApiKey}" : "")
-                .Append($"&vpn={Convert.ToInt32(IncludeVPN)}")
+                .Append($"{(UseTLS ? "https://" : "http://")}{ProxyCheckUrl}/?")
+                .Append(!string.IsNullOrWhiteSpace(ApiKey) ? $"key={ApiKey}&" : "")
+                .Append($"vpn={Convert.ToInt32(IncludeVPN)}")
                 .Append($"&asn={Convert.ToInt32(IncludeASN)}")
                 .Append($"&node={Convert.ToInt32(IncludeNode)}")
                 .Append($"&time={Convert.ToInt32(IncludeTime)}")

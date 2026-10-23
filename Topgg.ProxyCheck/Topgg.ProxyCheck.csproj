@@ -25,11 +25,11 @@
     <SignAssembly>true</SignAssembly>
     <DelaySign>false</DelaySign>
     <AssemblyOriginatorKeyFile>topgg.proxycheck.snk</AssemblyOriginatorKeyFile>
-    <Version>1.0.1</Version>
+    <Version>1.0.2</Version>
     <PackageId>Topgg.ProxyCheck</PackageId>
     <Product>Topgg.ProxyCheck</Product>
-    <AssemblyVersion>1.0.1.0</AssemblyVersion>
-    <FileVersion>1.0.1.0</FileVersion>
+    <AssemblyVersion>1.0.2.0</AssemblyVersion>
+    <FileVersion>1.0.2.0</FileVersion>
     <AssemblyName>Topgg.ProxyCheck</AssemblyName>
     <RootNamespace>Topgg.ProxyCheck</RootNamespace>
     <Authors>Top.gg B.V.</Authors>

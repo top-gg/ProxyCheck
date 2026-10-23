@@ -47,7 +47,7 @@ public class DeserializeTest
         // Arrange
         var handler = Substitute.For<HttpMessageHandler>();
         handler
-            .SetupRequest(HttpMethod.Post, "https://proxycheck.io/v2/&vpn=0&asn=0&node=0&time=0&inf=1&port=0&seen=0&days=7&risk=0")
+            .SetupRequest(HttpMethod.Post, "https://proxycheck.io/v2/?vpn=0&asn=0&node=0&time=0&inf=1&port=0&seen=0&days=7&risk=0")
             .ReturnsResponse(HttpStatusCode.OK, json);
 
         using var client = new HttpClient(handler);
@@ -92,7 +92,7 @@ public class DeserializeTest
         // Arrange
         var handler = Substitute.For<HttpMessageHandler>();
         handler
-            .SetupRequest(HttpMethod.Post, "https://proxycheck.io/v2/&vpn=0&asn=0&node=0&time=0&inf=1&port=0&seen=0&days=7&risk=0")
+            .SetupRequest(HttpMethod.Post, "https://proxycheck.io/v2/?vpn=0&asn=0&node=0&time=0&inf=1&port=0&seen=0&days=7&risk=0")
             .ReturnsResponse(HttpStatusCode.OK, json);
 
         using var client = new HttpClient(handler);
