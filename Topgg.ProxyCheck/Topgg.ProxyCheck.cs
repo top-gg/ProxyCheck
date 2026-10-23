@@ -82,6 +82,40 @@ namespace Topgg.ProxyCheck
 
         private const string ProxyCheckUrl = "proxycheck.io/v2";
 
+        /// <summary>
+        /// Builds the request URL. Every option, including the API key, goes into the query
+        /// string, escaped, so nothing ends up in the path (where HTTP tracing doesn't redact it).
+        /// </summary>
+        private string BuildRequestUrl()
+        {
+            var query = new List<KeyValuePair<string, string>>();
+            if (!string.IsNullOrWhiteSpace(ApiKey))
+            {
+                query.Add(new KeyValuePair<string, string>("key", ApiKey));
+            }
+
+            query.Add(Flag("vpn", IncludeVPN));
+            query.Add(Flag("asn", IncludeASN));
+            query.Add(Flag("node", IncludeNode));
+            query.Add(Flag("time", IncludeTime));
+            query.Add(Flag("inf", UseInference));
+            query.Add(Flag("port", IncludePort));
+            query.Add(Flag("seen", IncludeLastSeen));
+            query.Add(Number("days", DayLimit));
+            query.Add(Number("risk", (int)RiskLevel));
+
+            var queryString = string.Join(
+                "&",
+                query.Select(p => $"{Uri.EscapeDataString(p.Key)}={Uri.EscapeDataString(p.Value)}"));
+            return $"{(UseTLS ? "https" : "http")}://{ProxyCheckUrl}/?{queryString}";
+        }
+
+        private static KeyValuePair<string, string> Flag(string name, bool value)
+            => new KeyValuePair<string, string>(name, value ? "1" : "0");
+
+        private static KeyValuePair<string, string> Number(string name, int value)
+            => new KeyValuePair<string, string>(name, value.ToString(System.Globalization.CultureInfo.InvariantCulture));
+
         private ProxyCheckRequestOptions _options = new();
         private readonly IHttpClientFactory _clientFactory;
 
@@ -303,18 +337,7 @@ namespace Topgg.ProxyCheck
                 return result;
             }
 
-            var url = new StringBuilder()
-                .Append($"{(UseTLS ? "https://" : "http://")}{ProxyCheckUrl}/?")
-                .Append(!string.IsNullOrWhiteSpace(ApiKey) ? $"key={ApiKey}&" : "")
-                .Append($"vpn={Convert.ToInt32(IncludeVPN)}")
-                .Append($"&asn={Convert.ToInt32(IncludeASN)}")
-                .Append($"&node={Convert.ToInt32(IncludeNode)}")
-                .Append($"&time={Convert.ToInt32(IncludeTime)}")
-                .Append($"&inf={Convert.ToInt32(UseInference)}")
-                .Append($"&port={Convert.ToInt32(IncludePort)}")
-                .Append($"&seen={Convert.ToInt32(IncludeLastSeen)}")
-                .Append($"&days={Convert.ToInt32(DayLimit)}")
-                .Append($"&risk={Convert.ToInt32(RiskLevel)}");
+            var url = BuildRequestUrl();
 
             using var client = _clientFactory.CreateClient();
 
@@ -330,7 +353,7 @@ namespace Topgg.ProxyCheck
 
             try
             {
-                var response = await client.PostAsync(url.ToString(), content);
+                var response = await client.PostAsync(url, content);
                 ProxyCheckResult? result;
 
                 using (var stream = await response.Content.ReadAsStreamAsync())
