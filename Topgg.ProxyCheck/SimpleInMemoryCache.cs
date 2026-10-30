@@ -1,24 +1,19 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Linq;
 using System.Net;
 
 namespace Topgg.ProxyCheck
 {
     public class SimpleInMemoryCache : IProxyCheckCacheProvider
     {
-        // One ProxyCheck instance is usually shared across requests, so every access to the list
-        // goes through this lock. Unsynchronized writes left null slots behind that broke every
-        // later lookup.
-        private readonly object _lock = new object();
-        private readonly List<CacheItem> _cacheItems = new List<CacheItem>();
+        // One ProxyCheck instance is usually shared across requests, so the cache must be safe to
+        // read and write from many threads at once.
+        private readonly ConcurrentDictionary<(IPAddress, ProxyCheckRequestOptions), CacheItem> _cacheItems = new();
         private TimeSpan _maxCacheAge = TimeSpan.FromHours(1);
 
         private class CacheItem
         {
-            public IPAddress IPAddress { get; set; } = null!;
-            public ProxyCheckRequestOptions Options { get; set; } = null!;
-
             public ProxyCheckResult.IpResult Result { get; set; } = null!;
 
             public DateTimeOffset Time { get; set; }
@@ -47,24 +42,15 @@ namespace Topgg.ProxyCheck
 
         public IDictionary<IPAddress, ProxyCheckResult.IpResult> GetCacheRecords(IPAddress[] ipAddress, ProxyCheckRequestOptions options)
         {
-            CacheItem[] cacheHits;
-            lock (_lock)
+            var results = new Dictionary<IPAddress, ProxyCheckResult.IpResult>(ipAddress.Length);
+
+            foreach (var ip in ipAddress)
             {
-                // Let's clean the cache first
-                CleanCache();
+                if (results.ContainsKey(ip))
+                    continue;
 
-                cacheHits =
-                    _cacheItems.Where(c => ipAddress.Any(ip => ip.Equals(c.IPAddress)) && c.Options.Equals(options)).ToArray();
-            }
-
-            var results = new Dictionary<IPAddress, ProxyCheckResult.IpResult>(cacheHits.Length);
-
-            foreach (var item in cacheHits)
-            {
-                if (!results.ContainsKey(item.IPAddress))
-                {
-                    results.Add(item.IPAddress, item.Result);
-                }
+                if (_cacheItems.TryGetValue((ip, options), out var item) && !IsExpired(item))
+                    results.Add(ip, item.Result);
             }
 
             return results;
@@ -72,31 +58,31 @@ namespace Topgg.ProxyCheck
 
         public void SetCacheRecord(IDictionary<IPAddress, ProxyCheckResult.IpResult> results, ProxyCheckRequestOptions options)
         {
-            lock (_lock)
+            // Let's clean the cache first
+            CleanCache();
+
+            // The options object belongs to the caller and can change later, so the key keeps a copy.
+            var optionsKey = options.Clone();
+            foreach (var item in results)
             {
-                // Let's clean the cache first
-                CleanCache();
-
-                // We are not going to bother with removing existing exact matches as cleaning them upon a request/store will remove them.
-                foreach (var item in results)
+                _cacheItems[(item.Key, optionsKey)] = new CacheItem
                 {
-                    CacheItem cItem = new CacheItem
-                    {
-                        IPAddress = item.Key,
-                        Options = options,
-                        Result = item.Value,
-                        Time = DateTimeOffset.UtcNow
-                    };
-
-                    _cacheItems.Add(cItem);
-                }
+                    Result = item.Value,
+                    Time = DateTimeOffset.UtcNow
+                };
             }
         }
 
-        // Callers must hold _lock.
+        private bool IsExpired(CacheItem item) => item.Time + _maxCacheAge <= DateTimeOffset.UtcNow;
+
         private void CleanCache()
         {
-            _cacheItems.RemoveAll(c => c.Time + _maxCacheAge <= DateTimeOffset.UtcNow);
+            foreach (var entry in _cacheItems)
+            {
+                // Removes the entry only if it still holds this item, so a refreshed record stays.
+                if (IsExpired(entry.Value))
+                    ((ICollection<KeyValuePair<(IPAddress, ProxyCheckRequestOptions), CacheItem>>)_cacheItems).Remove(entry);
+            }
         }
     }
 }

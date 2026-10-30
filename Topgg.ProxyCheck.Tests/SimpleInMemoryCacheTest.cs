@@ -35,4 +35,36 @@ public class SimpleInMemoryCacheTest
             .ToArray();
         Assert.Equal(writers * writesPerWriter, cache.GetCacheRecords(all, options).Count);
     }
+
+    [Fact]
+    public void ExpiredRecordsAreNotReturned()
+    {
+        // Arrange
+        var cache = new SimpleInMemoryCache(TimeSpan.Zero);
+        var options = new ProxyCheckRequestOptions();
+        var ip = IPAddress.Parse("10.0.0.1");
+
+        // Act
+        cache.SetCacheRecord(new Dictionary<IPAddress, ProxyCheckResult.IpResult> { [ip] = new() }, options);
+
+        // Assert
+        Assert.Null(cache.GetCacheRecord(ip, options));
+    }
+
+    [Fact]
+    public void RecordsStayKeyedByTheOptionsTheyWereStoredWith()
+    {
+        // Arrange
+        var cache = new SimpleInMemoryCache();
+        var options = new ProxyCheckRequestOptions();
+        var ip = IPAddress.Parse("10.0.0.1");
+        cache.SetCacheRecord(new Dictionary<IPAddress, ProxyCheckResult.IpResult> { [ip] = new() }, options);
+
+        // Act
+        options.IncludeVPN = true;
+
+        // Assert
+        Assert.Null(cache.GetCacheRecord(ip, options));
+        Assert.NotNull(cache.GetCacheRecord(ip, new ProxyCheckRequestOptions()));
+    }
 }
