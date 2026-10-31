@@ -87,6 +87,9 @@ namespace Topgg.ProxyCheck
         [PublicAPI]
         public class IpResult
         {
+            // Every property is a value type or a string, so a memberwise copy is a full copy.
+            internal IpResult Clone() => (IpResult)MemberwiseClone();
+
             /// <summary>
             /// The ASN the IP address belongs to
             /// </summary>

@@ -1,4 +1,6 @@
 using System.Net;
+using System.Reflection;
+using NSubstitute;
 using Topgg.ProxyCheck;
 
 namespace ProxyCheckUtil.Tests;
@@ -19,21 +21,21 @@ public class SimpleInMemoryCacheTest
         {
             for (var i = 0; i < writesPerWriter; i++)
             {
-                var ip = new IPAddress(new byte[] { 10, (byte)writer, (byte)(i >> 8), (byte)i });
-                cache.SetCacheRecord(
-                    new Dictionary<IPAddress, ProxyCheckResult.IpResult> { [ip] = new() },
-                    options);
-                cache.GetCacheRecord(ip, options);
+                var ip = CreateIp(writer, i);
+                cache.Set(ip, options, new ProxyCheckResult.IpResult());
+                cache.Get(ip, options);
             }
         }));
         await Task.WhenAll(tasks);
 
         // Assert
-        var all = Enumerable.Range(0, writers)
-            .SelectMany(writer => Enumerable.Range(0, writesPerWriter)
-                .Select(i => new IPAddress(new byte[] { 10, (byte)writer, (byte)(i >> 8), (byte)i })))
-            .ToArray();
-        Assert.Equal(writers * writesPerWriter, cache.GetCacheRecords(all, options).Count);
+        for (var writer = 0; writer < writers; writer++)
+        {
+            for (var i = 0; i < writesPerWriter; i++)
+            {
+                Assert.NotNull(cache.Get(CreateIp(writer, i), options));
+            }
+        }
     }
 
     [Fact]
@@ -45,10 +47,10 @@ public class SimpleInMemoryCacheTest
         var ip = IPAddress.Parse("10.0.0.1");
 
         // Act
-        cache.SetCacheRecord(new Dictionary<IPAddress, ProxyCheckResult.IpResult> { [ip] = new() }, options);
+        cache.Set(ip, options, new ProxyCheckResult.IpResult());
 
         // Assert
-        Assert.Null(cache.GetCacheRecord(ip, options));
+        Assert.Null(cache.Get(ip, options));
     }
 
     [Fact]
@@ -58,13 +60,43 @@ public class SimpleInMemoryCacheTest
         var cache = new SimpleInMemoryCache();
         var options = new ProxyCheckRequestOptions();
         var ip = IPAddress.Parse("10.0.0.1");
-        cache.SetCacheRecord(new Dictionary<IPAddress, ProxyCheckResult.IpResult> { [ip] = new() }, options);
+        cache.Set(ip, options, new ProxyCheckResult.IpResult());
 
         // Act
         options.IncludeVPN = true;
 
         // Assert
-        Assert.Null(cache.GetCacheRecord(ip, options));
-        Assert.NotNull(cache.GetCacheRecord(ip, new ProxyCheckRequestOptions()));
+        Assert.Null(cache.Get(ip, options));
+        Assert.NotNull(cache.Get(ip, new ProxyCheckRequestOptions()));
     }
+
+    [Fact]
+    public async Task RepeatedQueryIsAnsweredFromTheCache()
+    {
+        // Arrange
+        var handler = Substitute.For<HttpMessageHandler>();
+        handler
+            .GetType()
+            .GetMethod("SendAsync", BindingFlags.NonPublic | BindingFlags.Instance)!
+            .Invoke(handler, [Arg.Any<HttpRequestMessage>(), Arg.Any<CancellationToken>()]);
+        handler.ReturnsResponse(HttpStatusCode.OK, """{ "status": "ok", "104.16.255.200": { "proxy": "no" } }""");
+
+        using var client = new HttpClient(handler);
+        var httpClientFactory = Substitute.For<IHttpClientFactory>();
+        httpClientFactory.CreateClient().Returns(client);
+        var proxyCheck = new ProxyCheck(httpClientFactory, "test-api-key", new SimpleInMemoryCache());
+        var ip = IPAddress.Parse("104.16.255.200");
+
+        // Act
+        var first = await proxyCheck.QueryAsync(ip);
+        var second = await proxyCheck.QueryAsync(ip);
+
+        // Assert
+        Assert.False(first.Results[ip].IsCacheHit);
+        Assert.True(second.Results[ip].IsCacheHit);
+        Assert.Single(handler.ReceivedCalls(), call => call.GetMethodInfo().Name == "SendAsync");
+    }
+
+    private static IPAddress CreateIp(int writer, int i)
+        => new(new byte[] { 10, (byte)writer, (byte)(i >> 8), (byte)i });
 }

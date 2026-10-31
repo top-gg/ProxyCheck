@@ -1,15 +1,14 @@
-﻿using System.Collections.Generic;
-using System.Net;
+﻿using System.Net;
 
 namespace Topgg.ProxyCheck
 {
     public interface IProxyCheckCacheProvider
     {
-        ProxyCheckResult.IpResult? GetCacheRecord(IPAddress ip, ProxyCheckRequestOptions options);
+        /// <summary>
+        /// Returns the cached result for the IP address, or null when there is none or it expired.
+        /// </summary>
+        ProxyCheckResult.IpResult? Get(IPAddress ipAddress, ProxyCheckRequestOptions options);
 
-        IDictionary<IPAddress, ProxyCheckResult.IpResult> GetCacheRecords(IPAddress[] ipAddress, ProxyCheckRequestOptions options);
-
-        void SetCacheRecord(IDictionary<IPAddress, ProxyCheckResult.IpResult> results,
-            ProxyCheckRequestOptions options);
+        void Set(IPAddress ipAddress, ProxyCheckRequestOptions options, ProxyCheckResult.IpResult result);
     }
 }

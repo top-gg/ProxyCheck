@@ -9,7 +9,7 @@
     <Nullable>enable</Nullable>
     <ApplicationIcon />
     <OutputTypeEx>exe</OutputTypeEx>
-    <LangVersion>9.0</LangVersion>
+    <LangVersion>10.0</LangVersion>
     <StartupObject />
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
@@ -25,11 +25,11 @@
     <SignAssembly>true</SignAssembly>
     <DelaySign>false</DelaySign>
     <AssemblyOriginatorKeyFile>topgg.proxycheck.snk</AssemblyOriginatorKeyFile>
-    <Version>1.0.3</Version>
+    <Version>2.0.0</Version>
     <PackageId>Topgg.ProxyCheck</PackageId>
     <Product>Topgg.ProxyCheck</Product>
-    <AssemblyVersion>1.0.3.0</AssemblyVersion>
-    <FileVersion>1.0.3.0</FileVersion>
+    <AssemblyVersion>2.0.0.0</AssemblyVersion>
+    <FileVersion>2.0.0.0</FileVersion>
     <AssemblyName>Topgg.ProxyCheck</AssemblyName>
     <RootNamespace>Topgg.ProxyCheck</RootNamespace>
     <Authors>Top.gg B.V.</Authors>
