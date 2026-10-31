@@ -5,10 +5,6 @@ using System.Threading;
 
 namespace Topgg.ProxyCheck
 {
-    /// <summary>
-    /// Keeps results in memory for a fixed time. Safe to share between threads, since one
-    /// <see cref="ProxyCheck"/> instance usually serves many requests at once.
-    /// </summary>
     public class SimpleInMemoryCache : IProxyCheckCacheProvider
     {
         private static readonly TimeSpan CleanupInterval = TimeSpan.FromMinutes(1);
