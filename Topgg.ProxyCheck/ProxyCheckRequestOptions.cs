@@ -48,9 +48,6 @@ namespace Topgg.ProxyCheck
         /// </summary>
         public RiskLevel? RiskLevel { get; set; }
 
-        // Every property is a value type, so a memberwise copy is a full copy.
-        internal ProxyCheckRequestOptions Clone() => (ProxyCheckRequestOptions)MemberwiseClone();
-
         public override bool Equals(object? obj)
         {
             if (!(obj is ProxyCheckRequestOptions o))

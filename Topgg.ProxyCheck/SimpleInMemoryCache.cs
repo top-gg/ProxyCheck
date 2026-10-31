@@ -13,7 +13,7 @@ namespace Topgg.ProxyCheck
         private readonly TimeSpan _maxCacheAge = TimeSpan.FromHours(1);
         private long _nextCleanupTicks;
 
-        private readonly record struct CacheKey(IPAddress IpAddress, ProxyCheckRequestOptions Options);
+        private readonly record struct CacheKey(IPAddress IpAddress, int Options);
 
         private readonly record struct CacheEntry(ProxyCheckResult.IpResult Result, DateTimeOffset ExpiresAt);
 
@@ -28,7 +28,7 @@ namespace Topgg.ProxyCheck
 
         public ProxyCheckResult.IpResult? Get(IPAddress ipAddress, ProxyCheckRequestOptions options)
         {
-            if (!_entries.TryGetValue(new CacheKey(ipAddress, options), out var entry))
+            if (!_entries.TryGetValue(CreateCacheKey(ipAddress, options), out var entry))
                 return null;
 
             return entry.ExpiresAt > DateTimeOffset.UtcNow ? entry.Result : null;
@@ -39,9 +39,23 @@ namespace Topgg.ProxyCheck
             var now = DateTimeOffset.UtcNow;
             RemoveExpired(now);
 
-            // ProxyCheck passes its own options object and changes it in place when a setting
-            // changes, so the key keeps a copy.
-            _entries[new CacheKey(ipAddress, options.Clone())] = new CacheEntry(result, now + _maxCacheAge);
+            _entries[CreateCacheKey(ipAddress, options)] = new CacheEntry(result, now + _maxCacheAge);
+        }
+
+        // Packs the options into one bit each, so two keys only match when every option matches.
+        // A missing risk level is sent as Disabled, so it is keyed the same way.
+        private static CacheKey CreateCacheKey(IPAddress ipAddress, ProxyCheckRequestOptions options)
+        {
+            var packed = 0;
+            if (options.IncludeVPN) packed |= 1 << 0;
+            if (options.UseTLS) packed |= 1 << 1;
+            if (options.IncludeASN) packed |= 1 << 2;
+            if (options.UseInference) packed |= 1 << 3;
+            if (options.IncludePort) packed |= 1 << 4;
+            if (options.IncludeLastSeen) packed |= 1 << 5;
+            packed |= (int)(options.RiskLevel ?? RiskLevel.Disabled) << 6;
+
+            return new CacheKey(ipAddress, packed);
         }
 
         private void RemoveExpired(DateTimeOffset now)
