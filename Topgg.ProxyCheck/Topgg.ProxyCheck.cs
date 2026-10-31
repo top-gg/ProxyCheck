@@ -297,44 +297,40 @@ namespace Topgg.ProxyCheck
                 throw new ArgumentException("Must contain at least 1 IP Address",
                     nameof(ipAddresses));
 
-            IDictionary<IPAddress, ProxyCheckResult.IpResult>? ipResults = null;
+            ProxyCheckResult? cached = null;
             if (CacheProvider != null)
             {
                 sw.Start();
 
-                ipResults = CacheProvider.GetCacheRecords(ipAddresses, _options);
-
-                // Ensure all the results are marked that they are cache hits
-
-                foreach (var item in ipResults)
-                    item.Value.IsCacheHit = true;
-
-                // We need to weed out the cache hits to pass the misses to the api
-                var ipList = ipAddresses.ToList();
-                ipList.RemoveAll(c => ipResults.ContainsKey(c));
-                ipAddresses = ipList.ToArray();
-
-                // Not 100% cache hits dont need stop watch anymore
-                if (ipAddresses.Any())
-                    sw.Stop();
-            }
-
-
-            if (ipAddresses.Length == 0 && ipResults != null) // All cache hits
-            {
-
-                ProxyCheckResult result = new ProxyCheckResult
+                List<IPAddress>? misses = null;
+                foreach (var ip in ipAddresses)
                 {
-                    Results = new Dictionary<IPAddress, ProxyCheckResult.IpResult>(ipResults),
-                    Status = StatusResult.OK,
-                    Node = IncludeNode ? "CACHE" : null
-                };
+                    var cachedResult = CacheProvider.Get(ip, _options);
+                    if (cachedResult == null)
+                    {
+                        misses ??= new List<IPAddress>(ipAddresses.Length);
+                        misses.Add(ip);
+                        continue;
+                    }
 
-                // 100% cache hits let's stop now
+                    cached ??= new ProxyCheckResult
+                    {
+                        Status = StatusResult.OK,
+                        Node = IncludeNode ? "CACHE" : null
+                    };
+                    cached.Results[ip] = cachedResult;
+                }
+
                 sw.Stop();
-                result.QueryTime = sw.Elapsed;
 
-                return result;
+                if (misses == null) // All cache hits
+                {
+                    cached!.QueryTime = sw.Elapsed;
+                    return cached;
+                }
+
+                // Only the misses go to the api
+                ipAddresses = misses.ToArray();
             }
 
             var url = BuildRequestUrl();
@@ -366,13 +362,16 @@ namespace Topgg.ProxyCheck
                     throw new ProxyCheckException("No result from server");
 
                 // We want to update the cache now
-                CacheProvider?.SetCacheRecord(result.Results, _options);
+                if (CacheProvider != null)
+                {
+                    foreach (var item in result.Results)
+                        CacheProvider.Set(item.Key, _options, item.Value);
+                }
 
-                if (ipResults == null ||
-                    !ipResults.Any()) // Return current results as none were cache hits
+                if (cached == null) // Return current results as none were cache hits
                     return result;
 
-                foreach (var item in ipResults)
+                foreach (var item in cached.Results)
                 {
                     if (result.Results.ContainsKey(item.Key))
                         continue; // We don't want to include a cache hit from an IP that was somehow gotten from API too.

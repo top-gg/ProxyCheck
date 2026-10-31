@@ -195,11 +195,6 @@ namespace Topgg.ProxyCheck
             /// If not `null` the description of the error that occured
             /// </summary>
             public string? ErrorMessage { get; set; }
-
-            /// <summary>
-            /// True if this item was retrieved from cache
-            /// </summary>
-            public bool IsCacheHit { get; set; }
         }
     }
 }

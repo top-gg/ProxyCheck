@@ -1,29 +1,24 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
+using System.Collections.Concurrent;
 using System.Net;
+using System.Threading;
 
 namespace Topgg.ProxyCheck
 {
     public class SimpleInMemoryCache : IProxyCheckCacheProvider
     {
-        private List<CacheItem> _cacheItems = new List<CacheItem>();
-        private TimeSpan _maxCacheAge = TimeSpan.FromHours(1);
+        private static readonly TimeSpan CleanupInterval = TimeSpan.FromMinutes(1);
 
-        private class CacheItem
-        {
-            public IPAddress IPAddress { get; set; } = null!;
-            public ProxyCheckRequestOptions Options { get; set; } = null!;
+        private readonly ConcurrentDictionary<CacheKey, CacheEntry> _entries = new();
+        private readonly TimeSpan _maxCacheAge = TimeSpan.FromHours(1);
+        private long _nextCleanupTicks;
 
-            public ProxyCheckResult.IpResult Result { get; set; } = null!;
+        private readonly record struct CacheKey(IPAddress IpAddress, int Options);
 
-            public DateTimeOffset Time { get; set; }
-
-        }
+        private readonly record struct CacheEntry(ProxyCheckResult.IpResult Result, DateTimeOffset ExpiresAt);
 
         public SimpleInMemoryCache()
         {
-
         }
 
         public SimpleInMemoryCache(TimeSpan maxCacheAge)
@@ -31,60 +26,59 @@ namespace Topgg.ProxyCheck
             _maxCacheAge = maxCacheAge;
         }
 
-        public ProxyCheckResult.IpResult? GetCacheRecord(IPAddress ip, ProxyCheckRequestOptions options)
+        public ProxyCheckResult.IpResult? Get(IPAddress ipAddress, ProxyCheckRequestOptions options)
         {
-            var results = GetCacheRecords(new[] {ip}, options);
+            if (!_entries.TryGetValue(CreateCacheKey(ipAddress, options), out var entry))
+                return null;
 
-            if (results != null && results.TryGetValue(ip, out var record))
-                return record;
-
-            return null;
+            return entry.ExpiresAt > DateTimeOffset.UtcNow ? entry.Result : null;
         }
 
-        public IDictionary<IPAddress, ProxyCheckResult.IpResult> GetCacheRecords(IPAddress[] ipAddress, ProxyCheckRequestOptions options)
+        public void Set(IPAddress ipAddress, ProxyCheckRequestOptions options, ProxyCheckResult.IpResult result)
         {
-            // Let's clean the cache first
-            CleanCache();
+            var now = DateTimeOffset.UtcNow;
+            RemoveExpired(now);
 
-            var cacheHits =
-                _cacheItems.Where(c => ipAddress.Any(ip => ip.Equals(c.IPAddress)) && c.Options.Equals(options)).ToArray();
+            _entries[CreateCacheKey(ipAddress, options)] = new CacheEntry(result, now + _maxCacheAge);
+        }
 
-            var results = new Dictionary<IPAddress, ProxyCheckResult.IpResult>(cacheHits.Length);
+        // Packs the options into one bit each, so two keys only match when every option matches.
+        // A missing risk level is sent as Disabled, so it is keyed the same way.
+        private static CacheKey CreateCacheKey(IPAddress ipAddress, ProxyCheckRequestOptions options)
+        {
+            var packed = 0;
+            if (options.IncludeVPN) packed |= 1 << 0;
+            if (options.UseTLS) packed |= 1 << 1;
+            if (options.IncludeASN) packed |= 1 << 2;
+            if (options.UseInference) packed |= 1 << 3;
+            if (options.IncludePort) packed |= 1 << 4;
+            if (options.IncludeLastSeen) packed |= 1 << 5;
+            packed |= (int)(options.RiskLevel ?? RiskLevel.Disabled) << 6;
 
-            foreach (var item in cacheHits)
+            return new CacheKey(ipAddress, packed);
+        }
+
+        private void RemoveExpired(DateTimeOffset now)
+        {
+            var nextCleanupTicks = Interlocked.Read(ref _nextCleanupTicks);
+            if (now.UtcTicks < nextCleanupTicks)
+                return;
+
+            // Only the caller that moves the next cleanup forward sweeps, the rest skip this round.
+            var movedCleanup = Interlocked.CompareExchange(
+                ref _nextCleanupTicks,
+                (now + CleanupInterval).UtcTicks,
+                nextCleanupTicks) == nextCleanupTicks;
+            if (!movedCleanup)
+                return;
+
+            foreach (var entry in _entries)
             {
-                if (!results.ContainsKey(item.IPAddress))
-                {
-                    results.Add(item.IPAddress, item.Result);
-                }
+                // A record refreshed between this check and the removal is dropped too. That only
+                // costs one extra lookup.
+                if (entry.Value.ExpiresAt <= now)
+                    _entries.TryRemove(entry.Key, out _);
             }
-
-            return results;
-        }
-
-        public void SetCacheRecord(IDictionary<IPAddress, ProxyCheckResult.IpResult> results, ProxyCheckRequestOptions options)
-        {
-            // Let's clean the cache first
-            CleanCache();
-
-            // We are not going to bother with removing existing exact matches as cleaning them upon a request/store will remove them.
-            foreach (var item in results)
-            {
-                CacheItem cItem = new CacheItem
-                {
-                    IPAddress = item.Key,
-                    Options = options,
-                    Result = item.Value,
-                    Time = DateTimeOffset.UtcNow
-                };
-
-                _cacheItems.Add(cItem);
-            }
-        }
-
-        private void CleanCache()
-        {
-            _cacheItems.RemoveAll(c => c.Time + _maxCacheAge <= DateTimeOffset.UtcNow);
         }
     }
 }
