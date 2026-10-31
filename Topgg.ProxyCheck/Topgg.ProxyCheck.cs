@@ -318,11 +318,7 @@ namespace Topgg.ProxyCheck
                         Status = StatusResult.OK,
                         Node = IncludeNode ? "CACHE" : null
                     };
-
-                    // The cached result is shared with every caller, so only a copy is marked.
-                    var hit = cachedResult.Clone();
-                    hit.IsCacheHit = true;
-                    cached.Results[ip] = hit;
+                    cached.Results[ip] = cachedResult;
                 }
 
                 sw.Stop();

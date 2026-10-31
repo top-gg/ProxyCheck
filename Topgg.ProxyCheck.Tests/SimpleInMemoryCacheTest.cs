@@ -79,7 +79,7 @@ public class SimpleInMemoryCacheTest
             .GetType()
             .GetMethod("SendAsync", BindingFlags.NonPublic | BindingFlags.Instance)!
             .Invoke(handler, [Arg.Any<HttpRequestMessage>(), Arg.Any<CancellationToken>()]);
-        handler.ReturnsResponse(HttpStatusCode.OK, """{ "status": "ok", "104.16.255.200": { "proxy": "no" } }""");
+        handler.ReturnsResponse(HttpStatusCode.OK, """{ "status": "ok", "104.16.255.200": { "proxy": "yes" } }""");
 
         using var client = new HttpClient(handler);
         var httpClientFactory = Substitute.For<IHttpClientFactory>();
@@ -88,12 +88,11 @@ public class SimpleInMemoryCacheTest
         var ip = IPAddress.Parse("104.16.255.200");
 
         // Act
-        var first = await proxyCheck.QueryAsync(ip);
+        await proxyCheck.QueryAsync(ip);
         var second = await proxyCheck.QueryAsync(ip);
 
         // Assert
-        Assert.False(first.Results[ip].IsCacheHit);
-        Assert.True(second.Results[ip].IsCacheHit);
+        Assert.True(second.Results[ip].IsProxy);
         Assert.Single(handler.ReceivedCalls(), call => call.GetMethodInfo().Name == "SendAsync");
     }
 

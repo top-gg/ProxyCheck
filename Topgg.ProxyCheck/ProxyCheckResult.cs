@@ -87,9 +87,6 @@ namespace Topgg.ProxyCheck
         [PublicAPI]
         public class IpResult
         {
-            // Every property is a value type or a string, so a memberwise copy is a full copy.
-            internal IpResult Clone() => (IpResult)MemberwiseClone();
-
             /// <summary>
             /// The ASN the IP address belongs to
             /// </summary>
@@ -198,11 +195,6 @@ namespace Topgg.ProxyCheck
             /// If not `null` the description of the error that occured
             /// </summary>
             public string? ErrorMessage { get; set; }
-
-            /// <summary>
-            /// True if this item was retrieved from cache
-            /// </summary>
-            public bool IsCacheHit { get; set; }
         }
     }
 }
